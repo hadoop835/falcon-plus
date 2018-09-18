@@ -1,3 +1,17 @@
+// Copyright 2017 Xiaomi, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package g
 
 import (
@@ -13,24 +27,23 @@ type HttpConfig struct {
 	Listen  string `json:"listen"`
 }
 
-type QueueConfig struct {
-	Sms  string `json:"sms"`
-	Mail string `json:"mail"`
-}
-
 type RedisConfig struct {
 	Addr          string   `json:"addr"`
 	MaxIdle       int      `json:"maxIdle"`
 	HighQueues    []string `json:"highQueues"`
 	LowQueues     []string `json:"lowQueues"`
+	UserIMQueue   string   `json:"userIMQueue"`
 	UserSmsQueue  string   `json:"userSmsQueue"`
 	UserMailQueue string   `json:"userMailQueue"`
 }
 
 type ApiConfig struct {
-	Portal string `json:"portal"`
-	Uic    string `json:"uic"`
-	Links  string `json:"links"`
+	Sms          string `json:"sms"`
+	Mail         string `json:"mail"`
+	Dashboard    string `json:"dashboard"`
+	PlusApi      string `json:"plus_api"`
+	PlusApiToken string `json:"plus_api_token"`
+	IM           string `json:"im"`
 }
 
 type FalconPortalConfig struct {
@@ -39,14 +52,25 @@ type FalconPortalConfig struct {
 	Max  int    `json:"max"`
 }
 
+type WorkerConfig struct {
+	IM   int `json:"im"`
+	Sms  int `json:"sms"`
+	Mail int `json:"mail"`
+}
+
+type HousekeeperConfig struct {
+	EventRetentionDays int `json:"event_retention_days"`
+	EventDeleteBatch   int `json:"event_delete_batch"`
+}
+
 type GlobalConfig struct {
-	Debug        bool                `json:"debug"`
-	UicToken     string              `json:"uicToken"`
+	LogLevel     string              `json:"log_level"`
 	FalconPortal *FalconPortalConfig `json:"falcon_portal"`
 	Http         *HttpConfig         `json:"http"`
-	Queue        *QueueConfig        `json:"queue"`
 	Redis        *RedisConfig        `json:"redis"`
 	Api          *ApiConfig          `json:"api"`
+	Worker       *WorkerConfig       `json:"worker"`
+	Housekeeper  *HousekeeperConfig  `json:"Housekeeper"`
 }
 
 var (

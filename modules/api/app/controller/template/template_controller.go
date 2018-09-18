@@ -1,3 +1,17 @@
+// Copyright 2017 Xiaomi, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package template
 
 import (
@@ -9,6 +23,7 @@ import (
 	"github.com/jinzhu/gorm"
 	h "github.com/open-falcon/falcon-plus/modules/api/app/helper"
 	f "github.com/open-falcon/falcon-plus/modules/api/app/model/falcon_portal"
+	u "github.com/open-falcon/falcon-plus/modules/api/app/utils"
 )
 
 type APIGetTemplatesOutput struct {
@@ -212,12 +227,14 @@ func DeleteTemplate(c *gin.Context) {
 		tx.Rollback()
 		return
 	}
+	//delete template
 	actionId := tpl.ActionID
 	if dt := tx.Delete(&tpl); dt.Error != nil {
 		h.JSONR(c, badstatus, dt.Error)
 		tx.Rollback()
 		return
 	}
+	//delete action
 	if actionId != 0 {
 		if dt := tx.Delete(&f.Action{}, actionId); dt.Error != nil {
 			h.JSONR(c, badstatus, dt.Error)
@@ -225,13 +242,54 @@ func DeleteTemplate(c *gin.Context) {
 			return
 		}
 	}
+	//delete strategy
 	if dt := tx.Where("tpl_id = ?", tplId).Delete(&f.Strategy{}); dt.Error != nil {
+		h.JSONR(c, badstatus, dt.Error)
+		tx.Rollback()
+		return
+	}
+	//delete grp_tpl
+	if dt := tx.Where("tpl_id = ?", tplId).Delete(&f.GrpTpl{}); dt.Error != nil {
 		h.JSONR(c, badstatus, dt.Error)
 		tx.Rollback()
 		return
 	}
 	tx.Commit()
 	h.JSONR(c, fmt.Sprintf("template %d has been deleted", tplId))
+	return
+}
+
+func GetATemplateHostgroup(c *gin.Context) {
+	tplidtmp := c.Params.ByName("tpl_id")
+	if tplidtmp == "" {
+		h.JSONR(c, badstatus, "tpl_id is missing")
+		return
+	}
+	tplId, err := strconv.Atoi(tplidtmp)
+	if err != nil {
+		h.JSONR(c, badstatus, err)
+		return
+	}
+	var tpl f.Template
+	if dt := db.Falcon.Find(&tpl, tplId); dt.Error != nil {
+		h.JSONR(c, badstatus, dt.Error)
+		return
+	}
+	tplGrps := []f.GrpTpl{}
+	hostgroups := []f.HostGroup{}
+	db.Falcon.Where("tpl_id = ?", tplId).Find(&tplGrps)
+	if len(tplGrps) != 0 {
+		tips := []int64{}
+		for _, t := range tplGrps {
+			tips = append(tips, t.GrpID)
+		}
+		tipsStr, _ := u.ArrInt64ToString(tips)
+		db.Falcon.Where(fmt.Sprintf("id in (%s)", tipsStr)).Find(&hostgroups)
+	}
+	h.JSONR(c, map[string]interface{}{
+		"template":   tpl,
+		"hostgroups": hostgroups,
+	})
 	return
 }
 
@@ -285,13 +343,12 @@ func CreateActionToTmplate(c *gin.Context) {
 		return
 	}
 	tx.Commit()
-	// db.Falcon.Commit()
 	h.JSONR(c, fmt.Sprintf("action is created and bind to template: %d", inputs.TplId))
 	return
 }
 
 type APIUpdateActionToTmplateInput struct {
-	ID                 int64  `json:"id" validate:"required"`
+	ID                 int64  `json:"id" binding:"required"`
 	UIC                string `json:"uic" binding:"exists"`
 	URL                string `json:"url" binding:"exists"`
 	Callback           int    `json:"callback" binding:"exists"`
@@ -334,4 +391,22 @@ func UpdateActionToTmplate(c *gin.Context) {
 	tx.Commit()
 	h.JSONR(c, fmt.Sprintf("action is updated, row affected: %d", dt.RowsAffected))
 	return
+}
+
+func GetActionByID(c *gin.Context) {
+	aid := c.Param("act_id")
+	act_id, err := strconv.Atoi(aid)
+	if err != nil {
+		h.JSONR(c, badstatus, "invalid action id")
+		return
+	}
+
+	act := f.Action{}
+	dt := db.Falcon.Table("action").Where("id = ?", act_id).First(&act)
+	if dt.Error != nil {
+		h.JSONR(c, badstatus, dt.Error)
+		return
+	}
+
+	h.JSONR(c, act)
 }

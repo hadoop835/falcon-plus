@@ -1,3 +1,17 @@
+// Copyright 2017 Xiaomi, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package uic
 
 import (
@@ -108,7 +122,7 @@ func CreateTeam(c *gin.Context) {
 		Resume:  cteam.Resume,
 		Creator: user.ID,
 	}
-	dt := db.Uic.Table("team").Save(&team)
+	dt := db.Uic.Table("team").Create(&team)
 	if dt.Error != nil {
 		h.JSONR(c, badstatus, dt.Error)
 		return
@@ -116,7 +130,7 @@ func CreateTeam(c *gin.Context) {
 	var dt2 *gorm.DB
 	if len(cteam.UserIDs) > 0 {
 		for i := 0; i < len(cteam.UserIDs); i++ {
-			dt2 = db.Uic.Save(&uic.RelTeamUser{Tid: team.ID, Uid: cteam.UserIDs[i]})
+			dt2 = db.Uic.Create(&uic.RelTeamUser{Tid: team.ID, Uid: cteam.UserIDs[i]})
 			if dt2.Error != nil {
 				err = dt2.Error
 				break
@@ -134,6 +148,7 @@ func CreateTeam(c *gin.Context) {
 type APIUpdateTeamInput struct {
 	ID      int    `json:"team_id" binding:"required"`
 	Resume  string `json:"resume"`
+	Name    string `json:"name"`
 	UserIDs []int  `json:"users"`
 }
 
@@ -169,8 +184,8 @@ func UpdateTeam(c *gin.Context) {
 		return
 	}
 
-	tm := uic.Team{ID: int64(cteam.ID), Resume: cteam.Resume}
-	dt = db.Uic.Table("team").Save(&tm)
+	tm := uic.Team{Name: cteam.Name, Resume: cteam.Resume}
+	dt = db.Uic.Table("team").Where("id=?", cteam.ID).Update(&tm)
 	if dt.Error != nil {
 		h.JSONR(c, badstatus, dt.Error)
 		return
@@ -214,7 +229,7 @@ func bindUsers(db config.DBPool, tid int, users []int) (err error) {
 		ur := uic.RelTeamUser{Tid: int64(tid), Uid: int64(i)}
 		db.Uic.Table("rel_team_user").Where(&ur).Find(&ur)
 		if ur.ID == 0 {
-			dt = db.Uic.Table("rel_team_user").Save(&ur)
+			dt = db.Uic.Table("rel_team_user").Create(&ur)
 		} else {
 			//if record exist, do next
 			continue
@@ -336,9 +351,9 @@ func GetTeamByName(c *gin.Context) {
 		h.JSONR(c, badstatus, "team name is missing")
 		return
 	}
-	team := uic.Team{Name: name}
+	var team uic.Team
 
-	dt := db.Uic.Table("team").Find(&team)
+	dt := db.Uic.Table("team").Where(&uic.Team{Name: name}).Find(&team)
 	if dt.Error != nil {
 		h.JSONR(c, badstatus, dt.Error)
 		return

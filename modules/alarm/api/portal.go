@@ -1,14 +1,30 @@
+// Copyright 2017 Xiaomi, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package api
 
 import (
+	"encoding/json"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/open-falcon/falcon-plus/modules/alarm/g"
 	"github.com/toolkits/net/httplib"
-	"log"
 	"sync"
 	"time"
 )
 
+//TODO:use api/app/model/falcon_portal/action.go
 type Action struct {
 	Id                 int    `json:"id"`
 	Uic                string `json:"uic"`
@@ -18,11 +34,6 @@ type Action struct {
 	BeforeCallbackMail int    `json:"before_callback_mail"`
 	AfterCallbackSms   int    `json:"after_callback_sms"`
 	AfterCallbackMail  int    `json:"after_callback_mail"`
-}
-
-type ActionWrap struct {
-	Msg  string  `json:"msg"`
-	Data *Action `json:"data"`
 }
 
 type ActionCache struct {
@@ -66,20 +77,20 @@ func CurlAction(id int) *Action {
 		return nil
 	}
 
-	uri := fmt.Sprintf("%s/api/action/%d", g.Config().Api.Portal, id)
+	uri := fmt.Sprintf("%s/api/v1/action/%d", g.Config().Api.PlusApi, id)
 	req := httplib.Get(uri).SetTimeout(5*time.Second, 30*time.Second)
+	token, _ := json.Marshal(map[string]string{
+		"name": "falcon-alarm",
+		"sig":  g.Config().Api.PlusApiToken,
+	})
+	req.Header("Apitoken", string(token))
 
-	var actionWrap ActionWrap
-	err := req.ToJson(&actionWrap)
+	var act Action
+	err := req.ToJson(&act)
 	if err != nil {
-		log.Printf("curl %s fail: %v", uri, err)
+		log.Errorf("curl %s fail: %v", uri, err)
 		return nil
 	}
 
-	if actionWrap.Msg != "" {
-		log.Printf("curl %s return msg: %v", uri, actionWrap.Msg)
-		return nil
-	}
-
-	return actionWrap.Data
+	return &act
 }

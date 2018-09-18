@@ -1,3 +1,17 @@
+// Copyright 2017 Xiaomi, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package g
 
 import "path/filepath"
@@ -18,8 +32,6 @@ func init() {
 		"hbs":        true,
 		"judge":      true,
 		"nodata":     true,
-		"sender":     true,
-		"task":       true,
 		"transfer":   true,
 		"gateway":    true,
 		"api":        true,
@@ -33,8 +45,6 @@ func init() {
 		"hbs":        "./hbs/bin/falcon-hbs",
 		"judge":      "./judge/bin/falcon-judge",
 		"nodata":     "./nodata/bin/falcon-nodata",
-		"sender":     "./sender/bin/falcon-sender",
-		"task":       "./task/bin/falcon-task",
 		"transfer":   "./transfer/bin/falcon-transfer",
 		"gateway":    "./gateway/bin/falcon-gateway",
 		"api":        "./api/bin/falcon-api",
@@ -48,8 +58,6 @@ func init() {
 		"hbs":        "./hbs/config/cfg.json",
 		"judge":      "./judge/config/cfg.json",
 		"nodata":     "./nodata/config/cfg.json",
-		"sender":     "./sender/config/cfg.json",
-		"task":       "./task/config/cfg.json",
 		"transfer":   "./transfer/config/cfg.json",
 		"gateway":    "./gateway/config/cfg.json",
 		"api":        "./api/config/cfg.json",
@@ -63,8 +71,6 @@ func init() {
 		"hbs":        "falcon-hbs",
 		"judge":      "falcon-judge",
 		"nodata":     "falcon-nodata",
-		"sender":     "falcon-sender",
-		"task":       "falcon-task",
 		"transfer":   "falcon-transfer",
 		"gateway":    "falcon-gateway",
 		"api":        "falcon-api",
@@ -78,8 +84,6 @@ func init() {
 		"hbs":        "./hbs/logs/hbs.log",
 		"judge":      "./judge/logs/judge.log",
 		"nodata":     "./nodata/logs/nodata.log",
-		"sender":     "./sender/logs/sender.log",
-		"task":       "./task/logs/task.log",
 		"transfer":   "./transfer/logs/transfer.log",
 		"gateway":    "./gateway/logs/gateway.log",
 		"api":        "./api/logs/api.log",
@@ -93,8 +97,6 @@ func init() {
 		"hbs":        "<NOT SET>",
 		"judge":      "<NOT SET>",
 		"nodata":     "<NOT SET>",
-		"sender":     "<NOT SET>",
-		"task":       "<NOT SET>",
 		"transfer":   "<NOT SET>",
 		"gateway":    "<NOT SET>",
 		"api":        "<NOT SET>",
@@ -105,11 +107,9 @@ func init() {
 	AllModulesInOrder = []string{
 		"graph",
 		"hbs",
-		"sender",
 		"judge",
 		"transfer",
 		"nodata",
-		"task",
 		"aggregator",
 		"agent",
 		"gateway",

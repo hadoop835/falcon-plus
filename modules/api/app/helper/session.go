@@ -1,3 +1,17 @@
+// Copyright 2017 Xiaomi, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package helper
 
 import (
@@ -10,6 +24,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/open-falcon/falcon-plus/modules/api/app/model/uic"
 	"github.com/open-falcon/falcon-plus/modules/api/config"
+	"github.com/spf13/viper"
 )
 
 type WebSession struct {
@@ -56,6 +71,14 @@ func SessionChecking(c *gin.Context) (auth bool, err error) {
 	if err != nil {
 		return
 	}
+
+	//default_token used in server side access
+	default_token := viper.GetString("default_token")
+	if default_token != "" && websessio.Sig == default_token {
+		auth = true
+		return
+	}
+
 	db := config.Con().Uic
 	var user uic.User
 	db.Where("name = ?", websessio.Name).Find(&user)
@@ -76,7 +99,11 @@ func SessionChecking(c *gin.Context) (auth bool, err error) {
 
 func GetUser(c *gin.Context) (user uic.User, err error) {
 	db := config.Con().Uic
-	websession, _ := GetSession(c)
+	websession, getserr := GetSession(c)
+	if getserr != nil {
+		err = getserr
+		return
+	}
 	user = uic.User{
 		Name: websession.Name,
 	}

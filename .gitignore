@@ -1,11 +1,7 @@
 bin/
 out/
-open-falcon
-
 *.swp
 *.swo
-glide.yaml
-package_cache_tmp/
-vendor/
 *.tar.gz
 docs/_site
+.idea

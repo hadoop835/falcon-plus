@@ -1,80 +1,33 @@
+// Copyright 2017 Xiaomi, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package http
 
 import (
-	"fmt"
-	"sort"
-	"strings"
-	"time"
-
-	"github.com/astaxie/beego"
+	"github.com/gin-gonic/gin"
 	"github.com/open-falcon/falcon-plus/modules/alarm/g"
 	"github.com/toolkits/file"
 )
 
-type MainController struct {
-	beego.Controller
+func Version(c *gin.Context) {
+	c.String(200, g.VERSION)
 }
 
-func (this *MainController) Version() {
-	this.Ctx.WriteString(g.VERSION)
+func Health(c *gin.Context) {
+	c.String(200, "ok")
 }
 
-func (this *MainController) Health() {
-	this.Ctx.WriteString("ok")
-}
-
-func (this *MainController) Workdir() {
-	this.Ctx.WriteString(fmt.Sprintf("%s", file.SelfDir()))
-}
-
-func (this *MainController) ConfigReload() {
-	remoteAddr := this.Ctx.Request.RemoteAddr
-	if strings.HasPrefix(remoteAddr, "127.0.0.1") {
-		g.ParseConfig(g.ConfigFile)
-		this.Data["json"] = g.Config()
-		this.ServeJSON()
-	} else {
-		this.Ctx.WriteString("no privilege")
-	}
-}
-
-func (this *MainController) Index() {
-	events := g.Events.Clone()
-
-	defer func() {
-		this.Data["Now"] = time.Now().Unix()
-		this.TplName = "index.html"
-	}()
-
-	count := len(events)
-	if count == 0 {
-		this.Data["Events"] = []*g.EventDto{}
-		return
-	}
-
-	// 按照持续时间排序
-	beforeOrder := make([]*g.EventDto, count)
-	i := 0
-	for _, event := range events {
-		beforeOrder[i] = event
-		i++
-	}
-
-	sort.Sort(g.OrderedEvents(beforeOrder))
-	this.Data["Events"] = beforeOrder
-}
-
-func (this *MainController) Solve() {
-	ids := this.GetString("ids")
-	if ids == "" {
-		this.Ctx.WriteString("")
-		return
-	}
-
-	idArr := strings.Split(ids, ",,")
-	for i := 0; i < len(idArr); i++ {
-		g.Events.Delete(idArr[i])
-	}
-
-	this.Ctx.WriteString("")
+func Workdir(c *gin.Context) {
+	c.String(200, file.SelfDir())
 }

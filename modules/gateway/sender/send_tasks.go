@@ -1,7 +1,21 @@
+// Copyright 2017 Xiaomi, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sender
 
 import (
-	"log"
+	log "github.com/Sirupsen/logrus"
 	"math/rand"
 	"time"
 
@@ -51,7 +65,7 @@ func forward2TransferTask(Q *nlist.SafeListLimited, concurrent int32) {
 			var err error
 
 			// 随机遍历transfer列表，直到数据发送成功 或者 遍历完;随机遍历，可以缓解慢transfer
-			resp := &g.TransferResp{}
+			resp := &cmodel.TransferResponse{}
 			sendOk := false
 
 			for j := 0; j < retry && !sendOk; j++ {
@@ -77,6 +91,7 @@ func forward2TransferTask(Q *nlist.SafeListLimited, concurrent int32) {
 						TransferSendCnt[host].IncrBy(int64(count))
 					} else {
 						// statistics
+						log.Errorf("transfer update fail, items size:%d, error:%v, resp:%v", len(transItems), err, resp)
 						TransferSendFailCnt[host].IncrBy(int64(count))
 					}
 				}
@@ -84,9 +99,6 @@ func forward2TransferTask(Q *nlist.SafeListLimited, concurrent int32) {
 
 			// statistics
 			if !sendOk {
-				if cfg.Debug {
-					log.Printf("send to transfer fail, connpool:%v", SenderConnPools.Proc())
-				}
 				pfc.Meter("SendFail", int64(count))
 			} else {
 				pfc.Meter("Send", int64(count))

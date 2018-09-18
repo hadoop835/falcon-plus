@@ -1,3 +1,17 @@
+// Copyright 2017 Xiaomi, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package cron
 
 import (
@@ -5,29 +19,34 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
+
 	"github.com/open-falcon/falcon-plus/common/model"
+	"github.com/open-falcon/falcon-plus/common/utils"
 	"github.com/open-falcon/falcon-plus/modules/alarm/api"
-	"github.com/open-falcon/falcon-plus/modules/alarm/redis"
+	"github.com/open-falcon/falcon-plus/modules/alarm/redi"
 	"github.com/toolkits/net/httplib"
 )
 
 func HandleCallback(event *model.Event, action *api.Action) {
 
-	// falcon,dinp
 	teams := action.Uic
 	phones := []string{}
 	mails := []string{}
+	ims := []string{}
 
 	if teams != "" {
-		phones, mails = api.ParseTeams(teams)
+		phones, mails, ims = api.ParseTeams(teams)
 		smsContent := GenerateSmsContent(event)
 		mailContent := GenerateMailContent(event)
+		imContent := GenerateIMContent(event)
 		if action.BeforeCallbackSms == 1 {
-			redis.WriteSms(phones, smsContent)
+			redi.WriteSms(phones, smsContent)
+			redi.WriteIM(ims, imContent)
 		}
 
 		if action.BeforeCallbackMail == 1 {
-			redis.WriteMail(mails, smsContent, mailContent)
+			redi.WriteMail(mails, smsContent, mailContent)
 		}
 	}
 
@@ -35,11 +54,12 @@ func HandleCallback(event *model.Event, action *api.Action) {
 
 	if teams != "" {
 		if action.AfterCallbackSms == 1 {
-			redis.WriteSms(phones, message)
+			redi.WriteSms(phones, message)
+			redi.WriteIM(ims, message)
 		}
 
 		if action.AfterCallbackMail == 1 {
-			redis.WriteMail(mails, message, message)
+			redi.WriteMail(mails, message, message)
 		}
 	}
 
@@ -73,15 +93,18 @@ func Callback(event *model.Event, action *api.Action) string {
 	req.Param("tpl_id", fmt.Sprintf("%d", event.TplId()))
 	req.Param("exp_id", fmt.Sprintf("%d", event.ExpressionId()))
 	req.Param("stra_id", fmt.Sprintf("%d", event.StrategyId()))
+	req.Param("left_value", utils.ReadableFloat(event.LeftValue))
 	req.Param("tags", tags)
 
 	resp, e := req.String()
 
 	success := "success"
 	if e != nil {
+		log.Errorf("callback fail, action:%v, event:%s, error:%s", action, event.String(), e.Error())
 		success = fmt.Sprintf("fail:%s", e.Error())
 	}
 	message := fmt.Sprintf("curl %s %s. resp: %s", action.Url, success, resp)
+	log.Debugf("callback to url:%s, event:%s, resp:%s", action.Url, event.String(), resp)
 
 	return message
 }

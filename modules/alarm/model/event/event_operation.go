@@ -1,3 +1,17 @@
+// Copyright 2017 Xiaomi, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package event
 
 import (
@@ -14,7 +28,7 @@ import (
 
 const timeLayout = "2006-01-02 15:04:05"
 
-func insertEvent(q orm.Ormer, eve *coommonModel.Event) (res interface{}, err error) {
+func insertEvent(q orm.Ormer, eve *coommonModel.Event) (res sql.Result, err error) {
 	var status int
 	if status = 0; eve.Status == "OK" {
 		status = 1
@@ -34,6 +48,13 @@ func insertEvent(q orm.Ormer, eve *coommonModel.Event) (res interface{}, err err
 		status,
 		time.Unix(eve.EventTime, 0).Format(timeLayout),
 	).Exec()
+
+	if err != nil {
+		log.Errorf("insert event to db fail, error:%v", err)
+	} else {
+		lastid, _ := res.LastInsertId()
+		log.Debug("insert event to db succ, last_insert_id:", lastid)
+	}
 	return
 }
 
@@ -44,7 +65,7 @@ func InsertEvent(eve *coommonModel.Event) {
 	var sqlLog sql.Result
 	var errRes error
 	log.Debugf("events: %v", eve)
-	log.Debugf("express is null: %v", eve.Expression == nil)
+	log.Debugf("expression is null: %v", eve.Expression == nil)
 	if len(event) == 0 {
 		//create cases
 		sqltemplete := `INSERT INTO event_cases (
@@ -65,6 +86,11 @@ func InsertEvent(eve *coommonModel.Event) {
 					strategy_id,
 					template_id
 					) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+
+		tpl_creator := ""
+		if eve.Tpl() != nil {
+			tpl_creator = eve.Tpl().Creator
+		}
 		sqlLog, errRes = q.Raw(
 			sqltemplete,
 			eve.Id,
@@ -73,7 +99,7 @@ func InsertEvent(eve *coommonModel.Event) {
 			eve.Func(),
 			//cond
 			fmt.Sprintf("%v %v %v", eve.LeftValue, eve.Operator(), eve.RightValue()),
-			eve.Strategy.Note,
+			eve.Note(),
 			eve.MaxStep(),
 			eve.CurrentStep,
 			eve.Priority(),
@@ -82,7 +108,7 @@ func InsertEvent(eve *coommonModel.Event) {
 			time.Unix(eve.EventTime, 0).Format(timeLayout),
 			//update_at
 			time.Unix(eve.EventTime, 0).Format(timeLayout),
-			eve.Strategy.Tpl.Creator,
+			tpl_creator,
 			eve.ExpressionId(),
 			eve.StrategyId(),
 			//template_id
@@ -107,6 +133,10 @@ func InsertEvent(eve *coommonModel.Event) {
 			sqltemplete = fmt.Sprintf("%v ,process_status = '%s', process_note = %d", sqltemplete, "unresolved", 0)
 		}
 
+		tpl_creator := ""
+		if eve.Tpl() != nil {
+			tpl_creator = eve.Tpl().Creator
+		}
 		if eve.CurrentStep == 1 {
 			//update start time of cases
 			sqltemplete = fmt.Sprintf("%v ,timestamp = ? WHERE id = ?", sqltemplete)
@@ -115,12 +145,12 @@ func InsertEvent(eve *coommonModel.Event) {
 				time.Unix(eve.EventTime, 0).Format(timeLayout),
 				eve.MaxStep(),
 				eve.CurrentStep,
-				eve.Strategy.Note,
+				eve.Note(),
 				fmt.Sprintf("%v %v %v", eve.LeftValue, eve.Operator(), eve.RightValue()),
 				eve.Status,
 				eve.Func(),
 				eve.Priority(),
-				eve.Strategy.Tpl.Creator,
+				tpl_creator,
 				eve.ExpressionId(),
 				eve.StrategyId(),
 				eve.TplId(),
@@ -134,12 +164,12 @@ func InsertEvent(eve *coommonModel.Event) {
 				time.Unix(eve.EventTime, 0).Format(timeLayout),
 				eve.MaxStep(),
 				eve.CurrentStep,
-				eve.Strategy.Note,
+				eve.Note(),
 				fmt.Sprintf("%v %v %v", eve.LeftValue, eve.Operator(), eve.RightValue()),
 				eve.Status,
 				eve.Func(),
 				eve.Priority(),
-				eve.Strategy.Tpl.Creator,
+				tpl_creator,
 				eve.ExpressionId(),
 				eve.StrategyId(),
 				eve.TplId(),
@@ -149,8 +179,7 @@ func InsertEvent(eve *coommonModel.Event) {
 	}
 	log.Debug(fmt.Sprintf("%v, %v", sqlLog, errRes))
 	//insert case
-	res2, err := insertEvent(q, eve)
-	log.Debug(fmt.Sprintf("%v, %v", res2, err))
+	insertEvent(q, eve)
 }
 
 func counterGen(metric string, tags string) (mycounter string) {
@@ -159,4 +188,17 @@ func counterGen(metric string, tags string) (mycounter string) {
 		mycounter = fmt.Sprintf("%s/%s", metric, tags)
 	}
 	return
+}
+
+func DeleteEventOlder(before time.Time, limit int) {
+	t := before.Format(timeLayout)
+	sqlTpl := `delete from events where timestamp<? limit ?`
+	q := orm.NewOrm()
+	resp, err := q.Raw(sqlTpl, t, limit).Exec()
+	if err != nil {
+		log.Errorf("delete event older than %v fail, error:%v", t, err)
+	} else {
+		affected, _ := resp.RowsAffected()
+		log.Debugf("delete event older than %v, rows affected:%v", t, affected)
+	}
 }
